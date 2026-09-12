@@ -169,3 +169,9 @@ ArduinoJson 7.x · WebSockets 2.x · [arduino-libopus](https://github.com/pschat
 * Нет deep-sleep.
 * BT не задействован.
 * AEC/шумоподавление — на стороне сервера (устройство шлёт raw opus).
+
+## Лицензия
+
+Код проекта — [MIT](LICENSE). Сторонние шрифты в `tools/fonts` (Arial,
+FontAwesome) и библиотеки зависимостей подчиняются своим собственным
+лицензиям.
