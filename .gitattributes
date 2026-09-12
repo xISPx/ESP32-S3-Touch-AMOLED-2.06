@@ -1,0 +1,15 @@
+# Нормализация line endings
+* text=auto
+
+# Windows-скрипты — всегда CRLF
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Бинарные ассеты
+*.ttf binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.png binary
+*.jpg binary
+*.bmp binary
