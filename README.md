@@ -1,185 +1,192 @@
-# ESP32-S3-Touch-AMOLED-2.06 — Smartwatch Prototype
+# ESP32-S3-Touch-AMOLED-2.06 — Smartwatch Firmware
 
-Рабочая прошивка смарт-часов для платы **Waveshare ESP32-S3-Touch-AMOLED-2.06**
-(ESP32-S3R8, 32 MB flash, 8 MB octal PSRAM, 2.06" AMOLED 410×502 CO5300 QSPI,
-FT3168 touch, AXP2101 PMU, PCF85063 RTC, QMI8658 IMU, ES8311 аудиокодек с
-динамиком и микрофоном).
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/xISPx/ESP32-S3-Touch-AMOLED-2.06)](https://github.com/xISPx/ESP32-S3-Touch-AMOLED-2.06/releases)
+[![Platform](https://img.shields.io/badge/Platform-ESP32--S3-E7352C?logo=espressif&logoColor=white)](https://www.waveshare.com/esp32-s3-touch-amoled-2.06.htm)
+[![LVGL](https://img.shields.io/badge/UI-LVGL%209-0D8E30?logo=lvgl&logoColor=white)](https://lvgl.io/)
+[![Stars](https://img.shields.io/github/stars/xISPx/ESP32-S3-Touch-AMOLED-2.06?style=flat&color=8b5cf6)](https://github.com/xISPx/ESP32-S3-Touch-AMOLED-2.06/stargazers)
 
-Проект собирается **PlatformIO + Arduino framework (core ≥ 3.2.0)**.
+English | [Русский](README.ru.md)
 
-**Экран скруглён** (радиус углов ≈38 px при 410×502): весь UI спроектирован с
-учётом угловых вырезов — плавающая шапка приложений (круглая кнопка «назад»),
-компликации циферблата по нижнему центру, отступы в меню/чатах; ничего
-интерактивного не попадает в угловые зоны.
+<!-- TODO: drop demo.gif here — 10–15 s of the watchface loop, max 5 MB -->
 
-**Флеш платы — 32 МБ** (проверено `esptool flash_id`: GigaDevice, quad).
-Таблица разделов `partitions_32mb.csv`: 6.25 МБ приложение + ~25.7 МБ SPIFFS
-(запас под внутреннее хранилище мелодий/контента) + NVS/PHY на стандартных
-смещениях (настройки переживают перепрошивку).
+A working smartwatch firmware for the **Waveshare ESP32-S3-Touch-AMOLED-2.06**
+board (ESP32-S3R8, 32 MB flash, 8 MB octal PSRAM, 2.06" AMOLED 410×502 CO5300
+QSPI, FT3168 touch, AXP2101 PMU, PCF85063 RTC, QMI8658 IMU, ES8311 audio codec
+with speaker and microphone).
+
+Built with **PlatformIO + Arduino framework (core ≥ 3.2.0)**.
+
+**The screen has rounded corners** (corner radius ≈ 38 px at 410×502): the whole
+UI is designed around the corner cutouts — a floating app header (round "back"
+button), watchface complications at the bottom center, padding in menus/chats;
+nothing interactive lands in the corner zones.
+
+**The board has 32 MB of flash** (verified with `esptool flash_id`: GigaDevice,
+quad). The `partitions_32mb.csv` table gives a 6.25 MB app + ~25.7 MB SPIFFS
+(headroom for on-device music/content storage) + NVS/PHY at standard offsets
+(settings survive re-flashing).
 
 ---
 
-## Возможности
+## Features
 
-| Функция | Реализация |
+| Feature | Implementation |
 |---|---|
-| Циферблат | Часы/дата (LVGL 9.3), дуга батареи, шагомер, индикатор Wi-Fi/зарядки |
-| Меню приложений | Лаунчер как на смарт-часах: свайп вверх/влево от циферблата, сетка иконок 2 колонки, свайп вправо/кнопка — назад |
-| Игры | «Змейка» (канвас 240×240, свайпы + D-pad, ускорение, рестарт) и «2048» (свайпы, счёт, авто-детект конца игры) |
-| Просмотр картинок | BMP (24/32 бита) из `/pictures` на TF-карте: декод в PSRAM RGB565-буфер, масштаб под экран, свайп влево/вправо |
-| Приложение «Шаги» | Кольцо прогресса к цели 6000 шагов, км, ккал, живой график \|a\| (5 Гц). Шагомер — адаптивный алгоритм: гравитационный вектор-фильтр → \|линейное ускорение\| → пик-детектор с адаптивным порогом → каденс-окна 0.5–3.6 шагов/с → паттерн «4 шага подряд» против одиночных рывков; дневный счётчик хранится в NVS и сбрасывается в полночь |
-| Приложение «Секундомер» | мс:сс.мс, старт/пауза/сброс, работает в фоне |
-| Приложение «Статус» | IMU в реальном времени, heap/PSRAM, RSSI, uptime |
-| **ИИ-ассистент (XiaoZhi)** | **Официальный протокол и официальная конфигурация платы** (main/boards/waveshare/esp32-s3-touch-amoled-2.06): WebSocket `hello`-хендшейк, текстовые запросы (`listen/detect`), TTS-предложения, голосовой режим push-to-talk (Opus 16 кГц/60 мс поверх дуплекса I2S 24 кГц), воспроизведение TTS через динамик, эмоции LLM в шапке чата |
-| Приложение «ИИ-ассистент» | Два режима: **FACE** — как в официальном клиенте (лицо с эмоциями LLM, статус, тап = начать/закончить голосовой разговор) и **CHAT** — пузыри, текст, RU/EN клавиатура, кнопка PTT; переключатель в шапке |
-| Активация XiaoZhi | Официальный OTA-флоу: `POST api.tenclass.net/xiaozhi/ota/` → код активации на экране → привязка на xiaozhi.me → websocket url/token сохраняются в NVS автоматически |
-| OpenAI-совместимый бэкенд | Альтернатива: любой `/v1/chat/completions` (URL/ключ/модель в настройках), история 4 хода |
-| **Музыка (TF-карта)** | Плеер WAV (16-бит PCM, 8–48 кГц, моно/стерео) с флешки: список файлов из `/` и `/music`, play/pause/prev/next, прогресс и время, громкость; I2S переконфигурируется под частоту файла, кодеки-слейвы остаются на коэффициентах 256·fs |
-| Настройки (на устройстве) | Детально проработанный UI под скруглённый экран: список с круглыми бейджами-иконками, статус-карточки, «Сохранить» — пилюля по нижнему центру (безопасная зона), клавиатура-шит не перекрывает кнопки и закрывается тапом по пустому месту. Wi-Fi SSID/пароль, яркость (на лету), таймаут подсветки, таймзона (10 пресетов), ИИ-бэкенд + URL/токен/ключ/модель — всё в NVS |
-| Время | PCF85063 → системные часы; SNTP-коррекция; запись обратно в RTC; таймзона из настроек |
-| Экранная клавиатура | Русская (ЙЦУКЕН строчные/заглавные) + английская + символы, переключение En/Аа |
-| Шрифты | Кириллица: ui_font_ru_16/20/28 (Arial + FontAwesome5-Solid+LVGL-символы, lv_font_conv; проверено покрытие ВСЕХ глифов LVGL 9.3, включая backspace/newline клавиатуры), инструменты в `tools/fonts` |
-| Точка доступа при сбое Wi-Fi | Если сохранённая сеть недоступна 3 попытки подряд или кредов нет — часы поднимают AP **«Watch-XXXX»** (XXXX = последние 4 гекса MAC, пароль `12345678`): подключитесь и откройте `http://192.168.4.1/` — та же веб-панель настройки. При успешном подключении к STA точка доступа гасится |
-| Веб-сервер (удалённый доступ) | При Wi-Fi: `http://<ip часов>/` — статус (батарея/IP/аптайм) и загрузка файлов из браузера: BMP → `/pictures`, WAV → `/music` (карту снимать не нужно). Требуется отключить изоляцию клиентов в роутере |
-| Shake-to-wake | Резкое встряхивание (|a| > 2.2 g) будит затемнённый экран |
-| Зарядка AXP2101 | Официальный профиль: CV 4.1 В, заряд 400 мА, предзаряд 50 мА, терминация 25 мА |
-| Энергосбережение | Затемнение подсветки после таймаута бездействия (настраивается), PWR-тап — тумблер яркости, PWR 6 с — аппаратное выключение |
-| Навигация | Свайпы, кнопка BOOT (циферблат → меню → назад), шапка приложений с кнопкой «назад» |
+| Watchface | Clock/date (LVGL 9.3), battery arc, step counter, Wi-Fi/charging indicators |
+| App launcher | Smartwatch-style launcher: swipe up/left from the watchface, 2-column icon grid, swipe right / button — back |
+| Games | "Snake" (240×240 canvas, swipes + D-pad, acceleration, restart) and "2048" (swipes, score, auto game-over detection) |
+| Image viewer | BMP (24/32-bit) from `/pictures` on the TF card: decoded into an RGB565 PSRAM buffer, scaled to the screen, swipe left/right |
+| Steps app | Progress ring towards a 6000-step goal, km, kcal, live \|a\| chart (5 Hz). The pedometer is an adaptive algorithm: gravity vector filter → \|linear acceleration\| → peak detector with adaptive threshold → cadence windows of 0.5–3.6 steps/s → a "4 steps in a row" pattern against single jerks; the daily counter lives in NVS and resets at midnight |
+| Stopwatch app | min:sec.ms, start/pause/reset, runs in the background |
+| Status app | Real-time IMU, heap/PSRAM, RSSI, uptime |
+| **AI assistant (XiaoZhi)** | **Official protocol and official board configuration** (main/boards/waveshare/esp32-s3-touch-amoled-2.06): WebSocket `hello` handshake, text queries (`listen/detect`), TTS sentences, push-to-talk voice mode (Opus 16 kHz/60 ms over a 24 kHz I2S duplex), TTS playback through the speaker, LLM emotions in the chat header |
+| AI assistant app | Two modes: **FACE** — like the official client (a face with LLM emotions, status, tap = start/finish a voice conversation) and **CHAT** — bubbles, text, RU/EN keyboard, PTT button; a switch in the header |
+| XiaoZhi activation | Official OTA flow: `POST api.tenclass.net/xiaozhi/ota/` → activation code on screen → link on xiaozhi.me → websocket url/token saved to NVS automatically |
+| OpenAI-compatible backend | Alternative: any `/v1/chat/completions` endpoint (URL/key/model in settings), 4-turn history |
+| **Music (TF card)** | WAV player (16-bit PCM, 8–48 kHz, mono/stereo) from the flash card: file list from `/` and `/music`, play/pause/prev/next, progress and time, volume; I2S is reconfigured to the file's sample rate, codecs stay at 256·fs ratios |
+| On-device settings | A detailed UI built for the rounded screen: list with round badge icons, status cards, a "Save" pill at the bottom center (safe zone), the on-screen keyboard never covers buttons and closes by tapping empty space. Wi-Fi SSID/password, brightness (on the fly), backlight timeout, timezone (10 presets), AI backend + URL/token/key/model — all in NVS |
+| Time | PCF85063 → system clock; SNTP correction; written back to the RTC; timezone from settings |
+| On-screen keyboard | Russian (ЙЦУКЕН, lower/upper case) + English + symbols, En/Аа toggle |
+| Fonts | Cyrillic: ui_font_ru_16/20/28 (Arial + FontAwesome5-Solid + LVGL symbols, lv_font_conv; verified coverage of ALL LVGL 9.3 glyphs, including keyboard backspace/newline), tools in `tools/fonts` |
+| Fallback Wi-Fi AP | If the saved network is unreachable 3 times in a row or credentials are missing, the watch brings up an **"Watch-XXXX"** AP (XXXX = last 4 hex of the MAC, password `12345678`): connect and open `http://192.168.4.1/` — the same web setup panel. Once STA connects, the AP goes down |
+| Web server (remote access) | On Wi-Fi: `http://<watch-ip>/` — status (battery/IP/uptime) and file upload from the browser: BMP → `/pictures`, WAV → `/music` (no need to pull the card). Requires disabling client isolation on the router |
+| Shake-to-wake | A sharp shake (\|a\| > 2.2 g) wakes the dimmed screen |
+| AXP2101 charging | Official profile: CV 4.1 V, 400 mA charge, 50 mA pre-charge, 25 mA termination |
+| Power saving | Backlight dims after an idle timeout (configurable), PWR tap — brightness toggle, PWR 6 s — hardware off |
+| Navigation | Swipes, BOOT button (watchface → menu → back), app header with a "back" button |
 
-**Голос (PTT):** удерживайте зелёную кнопку микрофона в чате — запись уходит
-на сервер как бинарные Opus-кадры (v1, raw), ответ приходит текстом (STT +
-TTS-предложения) и озвучивается динамиком. Состояния на экране: «Говорите…» →
-«Распознаю…» → транскрипт → ответ. В шапке чата — «лицо» ассистента
-(эмоции LLM) и спиннер, пока часы говорят.
+**Voice (PTT):** hold the green microphone button in the chat — the recording is
+streamed to the server as binary Opus frames (v1, raw), the reply arrives as
+text (STT + TTS sentences) and is spoken through the speaker. On-screen states:
+"Speak…" → "Recognizing…" → transcript → answer. The chat header shows the
+assistant's "face" (LLM emotions) and a spinner while the watch is talking.
 
-## Официальная конфигурация аудио (xiaozhi-esp32, board 2.06)
+## Official audio configuration (xiaozhi-esp32, 2.06 board)
 
-Аудио-стек повторяет `main/boards/waveshare/esp32-s3-touch-amoled-2.06`:
+The audio stack mirrors `main/boards/waveshare/esp32-s3-touch-amoled-2.06`:
 
-* **ES8311** (0x18) — DAC (динамик); **ES7210** (0x40) — ADC, MIC1 дифф.,
-  24 дБ; **AXP2101 ALDO1/ALDO2 3.3 В** — питание микрофона;
-* дуплекс I2S **24 кГц**, 16 бит, стерео-слоты, MCLK 256·fs = 6.144 МГц
-  (ES7210 удваивает до 12.288 МГц внутренне);
-* захват 24 кГц → ресемпл 2/3 → Opus 16 кГц (протокол); TTS декодируется по
-  `sample_rate` из hello (24 кГц) и играется напрямую.
+* **ES8311** (0x18) — DAC (speaker); **ES7210** (0x40) — ADC, differential MIC1,
+  24 dB; **AXP2101 ALDO1/ALDO2 3.3 V** — microphone power;
+* I2S duplex **24 kHz**, 16-bit, stereo slots, MCLK 256·fs = 6.144 MHz
+  (ES7210 doubles it to 12.288 MHz internally);
+* 24 kHz capture → 2/3 resample → Opus 16 kHz (protocol); TTS is decoded at the
+  `sample_rate` from hello (24 kHz) and played directly.
 
-**Голос (PTT):** удерживайте зелёную кнопку микрофона в чате — запись уходит
-на сервер как бинарные Opus-кадры (v1, raw), ответ приходит текстом (STT +
-TTS-предложения) и озвучивается динамиком. Состояния на экране: «Говорите…» →
-«Распознаю…» → транскрипт → ответ.
+## AI first run
 
-## Первый запуск ИИ
+1. Settings → Wi-Fi → SSID/password → Save.
+2. Open the "AI assistant". If the device is not yet linked to a xiaozhi.me
+   account, the watch will call the OTA server itself and show an
+   **activation code**.
+3. Enter the code at [xiaozhi.me](https://xiaozhi.me) (Console → devices).
+4. Hold the microphone or type a text — the connection happens with the token
+   the server returns automatically.
 
-1. Настройки → Wi-Fi → SSID/пароль → Сохранить.
-2. Откройте «ИИ-ассистент». Если устройство ещё не привязано к аккаунту
-   xiaozhi.me, часы сами обратятся к OTA-серверу и покажут **код активации**.
-3. Введите код на [xiaozhi.me](https://xiaozhi.me) (Консоль → устройства).
-4. Удерживайте микрофон или напишите текст — подключение произойдёт с
-   токеном, который сервер вернёт автоматически.
-
-## Сборка и прошивка
+## Build & flash
 
 ```bash
-build.cmd                      # сборка (PIO)
+build.cmd                      # build (PIO)
 build.cmd -t upload --upload-port COM3
-monitor.cmd                    # логи USB CDC 115200
+monitor.cmd                    # USB CDC logs 115200
 ```
 
-`build.cmd` задаёт чистое Windows-окружение (включая Git — нужен PIO для
-git-зависимости arduino-libopus). Из Git Bash напрямую тулчейн не находится.
+`build.cmd` sets up a clean Windows environment (including Git — PIO needs it
+for the arduino-libopus git dependency). The toolchain is not found when run
+from Git Bash directly.
 
-Сборка из **VS Code** (расширение **PlatformIO IDE**) работает так же:
-Build/Upload из панели PlatformIO. В `platformio.ini` зафиксирована платформа
-pioarduino **54.03.21-2** и подключён настоящий **esptool 5.0.2**
-(`platform_packages`): релиз 54.03.21 тащит esptool 5.0.0-dev1, который падает
-на шаге `bootloader.bin` с новым click (≥ 8.2) в окружении расширения, а
-мета-упаковка esptoolpy в 54.03.21-2 может тихо не развернуться на PIO 6.2 —
-прямой зип решает обе проблемы на любой машине.
+Building from **VS Code** (the **PlatformIO IDE** extension) works the same:
+Build/Upload from the PlatformIO panel. `platformio.ini` pins the pioarduino
+platform **54.03.21-2** and wires in a real **esptool 5.0.2**
+(`platform_packages`): the 54.03.21 release ships esptool 5.0.0-dev1, which
+fails on the `bootloader.bin` step with the new click (≥ 8.2) inside the
+extension environment, and the esptoolpy meta-package in 54.03.21-2 may
+silently fail to unpack on PIO 6.2 — the direct zip solves both on any machine.
 
-Проверено: `RAM 53.1 %`, `Flash 31.0 %` (2.60 MB из 6.5 MB приложения).
-Партиции: `partitions_32mb.csv`, memory type `qio_opi`. Для первой прошивки
-держите **BOOT** при подключении USB.
+Verified: `RAM 53.1 %`, `Flash 31.0 %` (2.60 MB out of the 6.5 MB app
+partition). Partitions: `partitions_32mb.csv`, memory type `qio_opi`. For the
+first flash, hold **BOOT** while connecting USB.
 
 ---
 
-## Архитектура
+## Architecture
 
 ```
-  Core      config.hpp · Logger · EventBus (POD-события, fan-out) · Error/Health
-            I2cBus (мьютекс) · Settings (NVS: Wi-Fi/экран/таймзона/ИИ)
+  Core      config.hpp · Logger · EventBus (POD events, fan-out) · Error/Health
+            I2cBus (mutex) · Settings (NVS: Wi-Fi/screen/timezone/AI)
   ─────────────────────────────────────────────────────────────────────────
   HAL       DisplayHal(CO5300) TouchHal(FT3168) PowerHal(AXP2101) RtcHal
             ImuHal(QMI8658) IoExpanderHal AudioHal(ES8311+ESP_I2S)
   ─────────────────────────────────────────────────────────────────────────
   Tasks     UiTask c1 p5      SensorTask c0 p3   PowerTask c0 p2   NetTask c0 p2   AiTask c0 p2
-            LVGL+AppHost      50 Гц IMU+шаги     батарея+кнопки    Wi-Fi/SNTP      XiaoZhi/OpenAI
-            16-КБ почта       паблишер           debounce          SettingsChanged listen/opus/TTS
+            LVGL+AppHost      50 Hz IMU+steps    battery+buttons   Wi-Fi/SNTP      XiaoZhi/OpenAI
+            16-KB mail        publisher          debounce          SettingsChanged listen/opus/TTS
   ─────────────────────────────────────────────────────────────────────────
-  UI        AppHost: слот 0 циферблат · слот 1 меню · слоты 2+ приложения
-            App (base): createChrome/шапка «назад»/жесты/onBack
+  UI        AppHost: slot 0 watchface · slot 1 menu · slots 2+ apps
+            App (base): createChrome/header "back"/gestures/onBack
             WatchfaceApp · AppMenuScreen · StatusScreen · FitnessScreen ·
-            StopwatchScreen · ChatScreen (PTT+клавиатура RU/EN) · SettingsScreen
+            StopwatchScreen · ChatScreen (PTT+RU/EN keyboard) · SettingsScreen
 ```
 
-* **События** — `Event` (POD, ~520 Б из-за текста ИИ) раскладывается шиной во
-  все подписки без блокировки. Новое: `SettingsChanged{mask}` (Wi-Fi/экран/
-  таймзона/ИИ) и `AiText{kind, text[512]}` (Query/Reply/Error/Stt/VoiceStart/
-  VoiceStop/Info).
-* **Единственный владелец LVGL** — UiTask (single-thread, `LV_USE_OS=NONE`).
-  DIRECT-рендер: пустой `flush_cb` + полный кадр `draw16bitRGBBitmap` из цикла
-  задачи (вендорский паттерн для CO5300).
-* **Аудио** — AudioHal: ES8311 регистры через Wire (порт es8311-компонента
-  перенесён с легаси-I2C, чтобы делить шину с Wire 3.x), ESP_I2S STD-режим,
-  16 кГц/16 бит/стерео-слоты (BCLK 41, WS 45, DOUT 40, DIN 42, MCLK 16,
-  PA = GPIO46). TTS с сервера (обычно 24 кГц) ресемплируется 2/3 → 16 кГц.
-* **Стеки задач** подобраны по high-water-mark (health-монитор печатает
-  min-free раз в 10 с): ui 20 КБ, sensor 14 КБ, power 12 КБ, net 16 КБ,
-  ai 20 КБ. Ловушка: событие теперь ~520 Б — каждая задача, кладущая `Event`
-  на стек, потеряла полкилобайта.
+* **Events** — `Event` (POD, ~520 B because of AI text) is fanned out by the
+  bus to all subscribers without locking. New: `SettingsChanged{mask}`
+  (Wi-Fi/screen/timezone/AI) and `AiText{kind, text[512]}`
+  (Query/Reply/Error/Stt/VoiceStart/VoiceStop/Info).
+* **The only LVGL owner** is UiTask (single-threaded, `LV_USE_OS=NONE`).
+  DIRECT rendering: empty `flush_cb` + a full-frame `draw16bitRGBBitmap` from
+  the task loop (the vendor pattern for CO5300).
+* **Audio** — AudioHal: ES8311 registers via Wire (the es8311 component port
+  moved off legacy I2C to share the bus with Wire 3.x), ESP_I2S STD mode,
+  16 kHz/16-bit/stereo slots (BCLK 41, WS 45, DOUT 40, DIN 42, MCLK 16,
+  PA = GPIO46). Server TTS (usually 24 kHz) is resampled 2/3 → 16 kHz.
+* **Task stacks** are tuned by high-water-mark (the health monitor prints
+  min-free every 10 s): ui 20 KB, sensor 14 KB, power 12 KB, net 16 KB,
+  ai 20 KB. Gotcha: the event is now ~520 B — every task that puts an `Event`
+  on the stack lost half a kilobyte.
 
-## Структура проекта
+## Project layout
 
 ```
 platformio.ini                 # pioarduino core 3.2.x, LVGL 9.3, opus, WebSockets
 include/
-  lv_conf.h                    # + LV_FONT_CUSTOM_DECLARE (кириллица), 192 КБ пул
-  config/config.hpp            # пины, топология задач, аудио, ИИ
+  lv_conf.h                    # + LV_FONT_CUSTOM_DECLARE (Cyrillic), 192 KB pool
+  config/config.hpp            # pins, task topology, audio, AI
   core/…                       # Error, Event, Logger, I2cBus, TaskBase, Settings
   hal/…                        # + AudioHal.hpp (ES8311/I2S)
-  tasks/…                      # + AiTask.hpp (XiaoZhi/OpenAI/голос)
-  ui/App.hpp, AppHost.hpp      # фреймворк приложений
+  tasks/…                      # + AiTask.hpp (XiaoZhi/OpenAI/voice)
+  ui/App.hpp, AppHost.hpp      # app framework
   ui/…                         # Watchface/Menu/Status/Fitness/Stopwatch/Chat/Settings
 src/ui/fonts/                   # ui_font_ru_{16,20,28}.c (lv_font_conv)
-tools/fonts/                    # ttf + команда генерации шрифтов
-tools/websocket.md              # официальный протокол XiaoZhi (docs/78/xiaozhi-esp32)
+tools/fonts/                    # ttf + font generation command
+tools/websocket.md              # official XiaoZhi protocol (docs/78/xiaozhi-esp32)
 ```
 
-## Зависимости
+## Dependencies
 
 GFX Library 1.6.0 · LVGL 9.3.0 · SensorLib 0.3.1 · XPowersLib 0.2.6 ·
 ArduinoJson 7.x · WebSockets 2.x · [arduino-libopus](https://github.com/pschatzmann/arduino-libopus)
 
-## Проверено на вики/демо Waveshare
+## Verified against the Waveshare wiki/demos
 
-* Пины и адреса: LCD 4/5/6/7/11/12/8, I2C 15/14, TP 38/9, BOOT 0;
+* Pins and addresses: LCD 4/5/6/7/11/12/8, I2C 15/14, TP 38/9, BOOT 0;
   PMU 0x34, touch 0x38, RTC 0x51, IMU 0x6B, ES8311 0x18.
-* **Ловушка конструктора CO5300:** registry-GFX 1.6.0 имеет 4-й аргумент
-  `bool ips` — передавать явно `false` (иначе розово-мусорный экран).
-* XL9555 на этой ревизии отсутствует (модуль уходит в деградацию, PWR-кнопка
-  читается через IRQ AXP2101: PKEY_SHORT/LONG, удержание 6 с — off).
-* Аудио — по вендорскому `08_ES8311`: I2S STD 16-bit stereo, MCLK 256·fs
-  с пина 16, PA GPIO46; ES8311 переинициализирован на Wire.
+* **CO5300 constructor gotcha:** the registry-GFX 1.6.0 has a 4th argument
+  `bool ips` — pass `false` explicitly (otherwise you get pink garbage on
+  screen).
+* No XL9555 on this revision (the module degrades; the PWR button is read via
+  the AXP2101 IRQ: PKEY_SHORT/LONG, 6 s hold = off).
+* Audio follows the vendor `08_ES8311`: I2S STD 16-bit stereo, MCLK 256·fs
+  from pin 16, PA GPIO46; ES8311 re-initialized on Wire.
 
-## Известные ограничения
+## Known limitations
 
-* Музыка — только WAV (16-бит PCM); MP3/FLAC не декодируются.
-* Голос работает только с бэкендом XiaoZhi (OpenAI-бэкенд — только текст).
-* Нет deep-sleep.
-* BT не задействован.
-* AEC/шумоподавление — на стороне сервера (устройство шлёт raw opus).
+* Music is WAV-only (16-bit PCM); MP3/FLAC are not decoded.
+* Voice works only with the XiaoZhi backend (the OpenAI backend is text-only).
+* No deep-sleep.
+* BT is unused.
+* AEC/noise suppression is on the server side (the device sends raw opus).
 
-## Лицензия
+## License
 
-Код проекта — [MIT](LICENSE). Сторонние шрифты в `tools/fonts` (Arial,
-FontAwesome) и библиотеки зависимостей подчиняются своим собственным
-лицензиям.
+Project code — [MIT](LICENSE). Third-party fonts in `tools/fonts` (Arial,
+FontAwesome) and dependency libraries are subject to their own licenses.
