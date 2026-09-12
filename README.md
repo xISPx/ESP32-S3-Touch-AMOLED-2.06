@@ -1,7 +1,7 @@
 # ESP32-S3-Touch-AMOLED-2.06 — Smartwatch Prototype
 
 Рабочая прошивка смарт-часов для платы **Waveshare ESP32-S3-Touch-AMOLED-2.06**
-(ESP32-S3R8, 16 MB flash, 8 MB octal PSRAM, 2.06" AMOLED 410×502 CO5300 QSPI,
+(ESP32-S3R8, 32 MB flash, 8 MB octal PSRAM, 2.06" AMOLED 410×502 CO5300 QSPI,
 FT3168 touch, AXP2101 PMU, PCF85063 RTC, QMI8658 IMU, ES8311 аудиокодек с
 динамиком и микрофоном).
 
@@ -87,6 +87,14 @@ monitor.cmd                    # логи USB CDC 115200
 
 `build.cmd` задаёт чистое Windows-окружение (включая Git — нужен PIO для
 git-зависимости arduino-libopus). Из Git Bash напрямую тулчейн не находится.
+
+Сборка из **VS Code** (расширение **PlatformIO IDE**) работает так же:
+Build/Upload из панели PlatformIO. В `platformio.ini` зафиксирована платформа
+pioarduino **54.03.21-2** и подключён настоящий **esptool 5.0.2**
+(`platform_packages`): релиз 54.03.21 тащит esptool 5.0.0-dev1, который падает
+на шаге `bootloader.bin` с новым click (≥ 8.2) в окружении расширения, а
+мета-упаковка esptoolpy в 54.03.21-2 может тихо не развернуться на PIO 6.2 —
+прямой зип решает обе проблемы на любой машине.
 
 Проверено: `RAM 53.1 %`, `Flash 31.0 %` (2.60 MB из 6.5 MB приложения).
 Партиции: `partitions_32mb.csv`, memory type `qio_opi`. Для первой прошивки
